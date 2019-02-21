@@ -1,0 +1,230 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link href="./favicon.ico" rel="shortcut icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encode &amp; Decode</title>
+    <link href="css/spectre.min.css" rel="stylesheet">
+    <style>
+    body {
+        transition: background-color .5s;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .sidenav {
+        height: 100%;
+        width: 0;
+        position: fixed;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        background-color: #111;
+        overflow-x: hidden;
+        transition: 0.5s;
+        padding-top: 60px;
+    }
+
+    .sidenav a {
+        padding: 8px 8px 8px 32px;
+        text-decoration: none;
+        font-size: 25px;
+        color: #818181;
+        display: block;
+        transition: 0.3s;
+    }
+
+    .sidenav a:hover {
+        color: #f1f1f1;
+    }
+
+    .sidenav .closeNav {
+        position: absolute;
+        top: 0;
+        right: 20px;
+        font-size: 30px;
+        margin-left: 50px;
+        cursor: pointer;
+    }
+
+    .openNav {
+        font-size: 30px;
+        cursor: pointer;
+    }
+
+    .overlay {
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2;
+        width: 100%;
+        height: 100%;
+        display: none;
+        position: absolute;
+        background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    #main {
+        transition: margin-left .5s;
+        padding: 16px;
+        position: relative;
+    }
+
+    @media screen and (max-height: 450px) {
+        .sidenav {
+            padding-top: 10px;
+        }
+
+        .sidenav a {
+            font-size: 14px;
+        }
+    }
+    </style>
+</head>
+
+<body>
+    <div id="sidenav" class="sidenav">
+        <a class="closeNav">×</a>
+        <!-- <a href="#">About</a> -->
+    </div>
+    <div id="main" class="columns" style="height: 100%;">
+        <div class="overlay"></div>
+        <div class="column col-2">
+            <span class="openNav">&#9776;</span>
+        </div>
+        <div class="column col-8 text-center">
+            <h2>Encode &amp; Decode</h2>
+            <div class="form-group form-horizontal">
+                <textarea class="form-input" id="input" title="input" name="input" rows="7" autofocus=""></textarea>
+            </div>
+            <div class="form-group form-horizontal inline" id="script-type">
+                <label class="form-label">Crypt type:</label>
+                <label class="form-radio">
+                    <input name="script" type="radio" id="b64" value="base64"><i class="form-icon"></i>Base64
+                </label>
+                <label class="form-radio">
+                    <input name="script" type="radio" id="bin" value="binary"><i class="form-icon"></i>Binary
+                </label>
+                <label class="form-radio">
+                    <input name="script" type="radio" id="hex" value="hex" checked=""><i class="form-icon"></i>Hex
+                </label>
+                <label class="form-radio">
+                    <input name="script" type="radio" id="uri" value="uri"><i class="form-icon"></i>URI
+                </label>
+                <label class="form-radio">
+                    <input name="script" type="radio" id="vie" value="viet"><i class="form-icon"></i>New Vietnamese
+                </label>
+            </div>
+            <div class="form-group">
+                <button class="btn btn-primary code" id="en" type="button">Encode</button>
+                <button class="btn btn-primary code" id="de" type="button">Decode</button>
+                <button class="btn btn-success hidden" id="go" type="button">Go!</button>
+                <button class="btn btn-danger hidden float-right" id="clear" type="button">Clear</button>
+            </div>
+            <div class="form-group" id="outputform">
+                <textarea class="form-input" id="output" title="output" name="output" readonly="" rows="7"></textarea>
+            </div>
+        </div>
+    </div>
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/core.js"></script>
+    <script>
+    'use strict';
+    (($in, $out, $btn, $noti) => {
+        ((core) => {
+            let selectOutput = () => {
+                $out.select();
+                document.execCommand('copy');
+            };
+
+            let checkOutput = output => {
+                if (!output) {
+                    $("#outputform").addClass("has-error");
+                    output = "> Error: Cannot decode this!"
+                } else {
+                    let nospace = output.replace(/\s/g, "");
+                    if (core.uri.validUrl(nospace)) {
+                        output = nospace;
+                        $btn.go.removeClass("hidden")
+                    } else {
+                        $btn.go.addClass("hidden");
+                    }
+                }
+                $out.val(output);
+            };
+
+            $(".code").on("click", (e) => {
+                let input = $in.val();
+                let c = core.getInstance($("#script-type").find(':checked').val());
+                let result = (e.target.id === "en") ? core.encode(c, input) : core.decode(c, input);
+
+                checkOutput(result);
+                selectOutput();
+            });
+
+            $in.on("input propertychange paste", () => {
+                let input = $in.val();
+                input ? $btn.clear.removeClass("hidden") : $btn.clear.addClass("hidden");
+                $btn.go.addClass("hidden");
+
+                $("#outputform").removeClass("has-error");
+                let type;
+                let result = (input === "") ? "" :
+                    core.decode((type = core.binary), input) ||
+                    core.decode((type = core.hex), input) ||
+                    core.decode((type = core.base64), input) ||
+                    core.decode((type = core.uri), input) ||
+                    core.decode((type = core.newVietnamese), input);
+                $(`#${type.id}`).prop('checked', true);
+                checkOutput(result);
+            });
+
+            $btn.clear.on("click", () => {
+                $in.val("");
+                $out.val("");
+                $btn.go.addClass("hidden");
+                $btn.clear.addClass("hidden");
+            });
+
+            const docHeight = $(document).height();
+            $btn.openNav.on("click", (e) => {
+                $("#sidenav").css("width", "250px");
+                $("#main").css("marginLeft", "250px");
+                $btn.openNav.css("display", "none");
+                $(".overlay").height(docHeight).css("display", "block");
+                e.preventDefault();
+            });
+
+            $btn.closeNav.on("click", () => {
+                $("#sidenav").css("width", "0");
+                $("#main").css("marginLeft", "0");
+                $btn.openNav.css("display", "block");
+                $(".overlay").height(docHeight).css("display", "none");
+            });
+
+            $btn.go.on("click", () => {
+                let link = $out.val();
+                if (!link.startsWith("http")) link = "http://" + link;
+                window.open(link, '_blank')
+            });
+            $out.on("click", () => selectOutput());
+            $in.on("dblclick", () => $in.val(""))
+            if ($in.val()) {
+                $btn.clear.removeClass("hidden");
+            }
+        })(new Core());
+
+    })($('#input'), $('#output'), {
+        clear: $("#clear"),
+        go: $("#go"),
+        openNav: $(".openNav"),
+        closeNav: $(".closeNav")
+    }, $("#noti"));
+    </script>
+</body>
+
+</html>
